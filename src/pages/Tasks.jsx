@@ -5,12 +5,14 @@ import { useAuth } from '../context/AuthContext'
 const STATUSES = ['open', 'in_progress', 'done']
 
 export default function Tasks() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
   const [tasks, setTasks] = useState([])
   const [profiles, setProfiles] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [editingTaskId, setEditingTaskId] = useState(null)
+  const [error, setError] = useState(null)
 
   async function loadData() {
     setLoading(true)
@@ -73,21 +75,40 @@ export default function Tasks() {
     loadData()
   }
 
+  async function deleteTask(task) {
+    if (!window.confirm(`Delete "${task.title}"? This can't be undone.`)) return
+    setError(null)
+    const { error: deleteError } = await supabase.from('tasks').delete().eq('id', task.id)
+    if (deleteError) {
+      setError(
+        deleteError.code === '23503'
+          ? `"${task.title}" still has documents linked to it — delete or relink them first.`
+          : deleteError.message
+      )
+      return
+    }
+    loadData()
+  }
+
   if (loading) return <p className="text-sm text-gray-500">Loading tasks…</p>
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">Tasks</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-900"
-        >
-          {showForm ? 'Cancel' : 'New task'}
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-900"
+          >
+            {showForm ? 'Cancel' : 'New task'}
+          </button>
+        )}
       </div>
 
-      {showForm && (
+      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+
+      {isAdmin && showForm && (
         <form onSubmit={createTask} className="mb-6 space-y-3 rounded-lg border bg-white p-4">
           <input name="title" placeholder="Task title" required className="w-full rounded-md border px-3 py-2 text-sm" />
           <textarea
@@ -160,24 +181,38 @@ export default function Tasks() {
                   )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <button
-                    onClick={() => setEditingTaskId(task.id)}
-                    className="text-xs font-medium text-brand-900 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <select
-                    value={task.assigned_to ?? ''}
-                    onChange={(e) => updateAssignee(task.id, e.target.value)}
-                    className="rounded-md border px-2 py-1 text-xs"
-                  >
-                    <option value="">Unassigned</option>
-                    {profiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.full_name}
-                      </option>
-                    ))}
-                  </select>
+                  {isAdmin && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditingTaskId(task.id)}
+                        className="text-xs font-medium text-brand-900 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteTask(task)}
+                        className="text-xs font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                  {isAdmin ? (
+                    <select
+                      value={task.assigned_to ?? ''}
+                      onChange={(e) => updateAssignee(task.id, e.target.value)}
+                      className="rounded-md border px-2 py-1 text-xs"
+                    >
+                      <option value="">Unassigned</option>
+                      {profiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs text-gray-500">{task.assignee?.full_name ?? 'Unassigned'}</span>
+                  )}
                   <select
                     value={task.status}
                     onChange={(e) => updateStatus(task.id, e.target.value)}
@@ -194,7 +229,11 @@ export default function Tasks() {
             </li>
           )
         )}
-        {tasks.length === 0 && <p className="text-sm text-gray-500">No tasks yet. Create the first one.</p>}
+        {tasks.length === 0 && (
+          <p className="text-sm text-gray-500">
+            {isAdmin ? 'No tasks yet. Create the first one.' : 'No tasks assigned to you yet.'}
+          </p>
+        )}
       </ul>
     </div>
   )

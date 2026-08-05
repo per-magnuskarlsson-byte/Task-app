@@ -5,7 +5,7 @@ create table if not exists profiles (
   id uuid references auth.users on delete cascade primary key,
   full_name text,
   email text,
-  role text default 'member', -- 'admin' or 'member'
+  role text default 'member', -- 'admin' (superuser) or 'member'
   created_at timestamptz default now()
 );
 
@@ -55,35 +55,122 @@ create table if not exists documents (
 );
 
 -- ── Row Level Security ──────────────────────────────────────────
--- Everyone who is logged in can see everything (small trusted team).
--- Only signed-in users can write. Adjust if you need per-user restrictions.
+-- A task is visible only to the profile it's assigned to, and to
+-- superusers (profiles.role = 'admin'). Only superusers can create, edit,
+-- reassign, or delete tasks — the assignee can still flip its status. A
+-- document is visible/manageable by its task's assignee or a superuser;
+-- relinking a document to a different task is superuser-only.
 
 alter table profiles enable row level security;
 alter table tasks enable row level security;
 alter table documents enable row level security;
+
+-- Helper: is the current user a superuser? security definer so it can
+-- read `profiles` regardless of the caller's own RLS visibility into it.
+create or replace function is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from profiles where id = auth.uid() and role = 'admin'
+  );
+$$;
 
 create policy "profiles are viewable by authenticated users"
   on profiles for select using (auth.role() = 'authenticated');
 create policy "users can update their own profile"
   on profiles for update using (auth.uid() = id);
 
-create policy "tasks are viewable by authenticated users"
-  on tasks for select using (auth.role() = 'authenticated');
-create policy "authenticated users can create tasks"
-  on tasks for insert with check (auth.role() = 'authenticated');
-create policy "authenticated users can update tasks"
-  on tasks for update using (auth.role() = 'authenticated');
-create policy "authenticated users can delete tasks"
-  on tasks for delete using (auth.role() = 'authenticated');
+-- Close a self-escalation gap: the policy above lets a user UPDATE their
+-- own row with no column restriction, which would let them set their own
+-- role to 'admin'. Only a superuser may change `role`.
+create or replace function prevent_role_self_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not is_admin() and new.role is distinct from old.role then
+    raise exception 'Only a superuser can change roles';
+  end if;
+  return new;
+end;
+$$;
 
-create policy "documents are viewable by authenticated users"
-  on documents for select using (auth.role() = 'authenticated');
-create policy "authenticated users can add documents"
-  on documents for insert with check (auth.role() = 'authenticated');
-create policy "authenticated users can update documents"
-  on documents for update using (auth.role() = 'authenticated');
-create policy "authenticated users can delete documents"
-  on documents for delete using (auth.role() = 'authenticated');
+drop trigger if exists prevent_role_self_escalation on profiles;
+create trigger prevent_role_self_escalation
+  before update on profiles
+  for each row execute procedure prevent_role_self_escalation();
+
+create policy "tasks are viewable by their assignee or a superuser"
+  on tasks for select
+  using (is_admin() or assigned_to = auth.uid());
+create policy "only superusers can create tasks"
+  on tasks for insert
+  with check (is_admin());
+create policy "assignee or superuser can update a task"
+  on tasks for update
+  using (is_admin() or assigned_to = auth.uid())
+  with check (is_admin() or assigned_to = auth.uid());
+create policy "only superusers can delete tasks"
+  on tasks for delete
+  using (is_admin());
+
+-- Column-level guard: a non-superuser assignee may only flip `status` —
+-- everything else on a task is superuser-only, even though the row-level
+-- policy above would otherwise let the assignee UPDATE the row.
+create or replace function enforce_task_update_permissions()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not is_admin() then
+    if new.title is distinct from old.title
+       or new.description is distinct from old.description
+       or new.due_date is distinct from old.due_date
+       or new.priority is distinct from old.priority
+       or new.assigned_to is distinct from old.assigned_to
+       or new.created_by is distinct from old.created_by then
+      raise exception 'Only a superuser can edit, reassign, or delete tasks';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_task_update on tasks;
+create trigger enforce_task_update
+  before update on tasks
+  for each row execute procedure enforce_task_update_permissions();
+
+create policy "documents are viewable by their task's assignee or a superuser"
+  on documents for select
+  using (
+    is_admin()
+    or exists (select 1 from tasks t where t.id = documents.task_id and t.assigned_to = auth.uid())
+  );
+create policy "assignee or superuser can upload a document to their task"
+  on documents for insert
+  with check (
+    is_admin()
+    or exists (select 1 from tasks t where t.id = task_id and t.assigned_to = auth.uid())
+  );
+create policy "assignee or superuser can delete a document on their task"
+  on documents for delete
+  using (
+    is_admin()
+    or exists (select 1 from tasks t where t.id = documents.task_id and t.assigned_to = auth.uid())
+  );
+create policy "only superusers can edit or relink a document"
+  on documents for update
+  using (is_admin())
+  with check (is_admin());
 
 -- ── Storage bucket for uploaded files ───────────────────────────
 -- Run once: creates a private bucket. Files are only reachable via
