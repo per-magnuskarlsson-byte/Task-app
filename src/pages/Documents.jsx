@@ -40,6 +40,11 @@ export default function Documents() {
       setError('Choose a file first.')
       return
     }
+    const taskId = form.get('task_id')
+    if (!taskId) {
+      setError('Every document must be linked to a task — pick one.')
+      return
+    }
 
     setUploading(true)
     const path = `${user.id}/${Date.now()}-${file.name}`
@@ -54,7 +59,7 @@ export default function Documents() {
     const { error: insertError } = await supabase.from('documents').insert({
       title: form.get('title') || file.name,
       category: form.get('category'),
-      task_id: form.get('task_id') || null,
+      task_id: taskId,
       file_path: path,
       file_name: file.name,
       uploaded_by: user.id
@@ -75,7 +80,8 @@ export default function Documents() {
   }
 
   async function relinkDocument(docId, taskId) {
-    await supabase.from('documents').update({ task_id: taskId || null }).eq('id', docId)
+    if (!taskId) return // a document must always stay linked to some task
+    await supabase.from('documents').update({ task_id: taskId }).eq('id', docId)
     loadData()
   }
 
@@ -83,35 +89,43 @@ export default function Documents() {
     <div>
       <h2 className="mb-4 text-lg font-semibold text-gray-900">Documents</h2>
 
-      <form onSubmit={handleUpload} className="mb-6 space-y-3 rounded-lg border bg-white p-4">
-        <input name="title" placeholder="Document title (optional)" className="w-full rounded-md border px-3 py-2 text-sm" />
-        <div className="flex gap-3">
-          <select name="category" className="rounded-md border px-3 py-2 text-sm">
-            {CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
+      {tasks.length === 0 ? (
+        <p className="mb-6 rounded-lg border bg-white p-4 text-sm text-gray-500">
+          Every document has to be linked to a task. Create a task first, then come back here to upload.
+        </p>
+      ) : (
+        <form onSubmit={handleUpload} className="mb-6 space-y-3 rounded-lg border bg-white p-4">
+          <input name="title" placeholder="Document title (optional)" className="w-full rounded-md border px-3 py-2 text-sm" />
+          <div className="flex gap-3">
+            <select name="category" className="rounded-md border px-3 py-2 text-sm">
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <select name="task_id" required defaultValue="" className="flex-1 rounded-md border px-3 py-2 text-sm">
+              <option value="" disabled>
+                Link to task…
               </option>
-            ))}
-          </select>
-          <select name="task_id" className="flex-1 rounded-md border px-3 py-2 text-sm">
-            <option value="">No linked task</option>
-            {tasks.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <input name="file" type="file" className="w-full text-sm" required />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={uploading}
-          className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50"
-        >
-          {uploading ? 'Uploading…' : 'Upload document'}
-        </button>
-      </form>
+              {tasks.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input name="file" type="file" className="w-full text-sm" required />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button
+            type="submit"
+            disabled={uploading}
+            className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50"
+          >
+            {uploading ? 'Uploading…' : 'Upload document'}
+          </button>
+        </form>
+      )}
 
       <ul className="space-y-2">
         {documents.map((doc) => (
@@ -126,11 +140,10 @@ export default function Documents() {
               </p>
             </div>
             <select
-              value={doc.task_id ?? ''}
+              value={doc.task_id}
               onChange={(e) => relinkDocument(doc.id, e.target.value)}
               className="shrink-0 rounded-md border px-2 py-1 text-xs"
             >
-              <option value="">No linked task</option>
               {tasks.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.title}

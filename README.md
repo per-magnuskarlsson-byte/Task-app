@@ -17,7 +17,12 @@ same site works on your laptop too.
 2. In the SQL editor, paste and run everything in `supabase/schema.sql`.
    This creates the `profiles`, `tasks`, `documents` tables, a private
    `documents` storage bucket, and the security rules that make sure only
-   logged-in team members can read or write data.
+   logged-in team members can read or write data. Every document requires a
+   linked task (`documents.task_id`, not nullable) — a task can't be deleted
+   while documents still reference it.
+   - Already have a project running the old schema? Run
+     `supabase/migrations/002_require_document_task.sql` instead — see the
+     comments at the top of that file first.
 3. In **Project settings → API**, copy the **Project URL** and **anon public key**.
 
 ## 2. Configure the app

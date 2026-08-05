@@ -38,6 +38,10 @@ create table if not exists tasks (
 );
 
 -- 3. Documents (process definitions, checklists, etc.)
+-- Every document belongs to exactly one task: task_id is a required single
+-- foreign key (not a join table), so a document can never be stored without
+-- a link, and can never link to more than one task. A task with documents
+-- attached can't be deleted until those documents are removed or relinked.
 create table if not exists documents (
   id uuid default gen_random_uuid() primary key,
   title text not null,
@@ -45,15 +49,9 @@ create table if not exists documents (
   file_path text not null,      -- path inside the "documents" storage bucket
   file_name text,
   version int default 1,
+  task_id uuid not null references tasks(id) on delete restrict,
   uploaded_by uuid references profiles(id) on delete set null,
   created_at timestamptz default now()
-);
-
--- 4. Optional: link documents to specific tasks (e.g. attach a checklist to a task)
-create table if not exists task_documents (
-  task_id uuid references tasks(id) on delete cascade,
-  document_id uuid references documents(id) on delete cascade,
-  primary key (task_id, document_id)
 );
 
 -- ── Row Level Security ──────────────────────────────────────────
@@ -63,7 +61,6 @@ create table if not exists task_documents (
 alter table profiles enable row level security;
 alter table tasks enable row level security;
 alter table documents enable row level security;
-alter table task_documents enable row level security;
 
 create policy "profiles are viewable by authenticated users"
   on profiles for select using (auth.role() = 'authenticated');
@@ -83,13 +80,10 @@ create policy "documents are viewable by authenticated users"
   on documents for select using (auth.role() = 'authenticated');
 create policy "authenticated users can add documents"
   on documents for insert with check (auth.role() = 'authenticated');
+create policy "authenticated users can update documents"
+  on documents for update using (auth.role() = 'authenticated');
 create policy "authenticated users can delete documents"
   on documents for delete using (auth.role() = 'authenticated');
-
-create policy "task_documents viewable by authenticated users"
-  on task_documents for select using (auth.role() = 'authenticated');
-create policy "authenticated users can link documents to tasks"
-  on task_documents for insert with check (auth.role() = 'authenticated');
 
 -- ── Storage bucket for uploaded files ───────────────────────────
 -- Run once: creates a private bucket. Files are only reachable via

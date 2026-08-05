@@ -10,6 +10,7 @@ export default function Tasks() {
   const [profiles, setProfiles] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [editingTaskId, setEditingTaskId] = useState(null)
 
   async function loadData() {
     setLoading(true)
@@ -41,6 +42,23 @@ export default function Tasks() {
     })
     if (!error) {
       setShowForm(false)
+      loadData()
+    }
+  }
+
+  async function updateTask(e, taskId) {
+    e.preventDefault()
+    const form = new FormData(e.target)
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        title: form.get('title'),
+        description: form.get('description'),
+        due_date: form.get('due_date') || null
+      })
+      .eq('id', taskId)
+    if (!error) {
+      setEditingTaskId(null)
       loadData()
     }
   }
@@ -96,47 +114,86 @@ export default function Tasks() {
       )}
 
       <ul className="space-y-2">
-        {tasks.map((task) => (
-          <li key={task.id} className="rounded-lg border bg-white p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-medium text-gray-900">{task.title}</p>
-                {task.description && <p className="mt-1 text-sm text-gray-500">{task.description}</p>}
-                {task.due_date && <p className="mt-2 text-xs text-gray-400">Due {task.due_date}</p>}
-                {task.documents?.length > 0 && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    📎 {task.documents.map((d) => d.title).join(', ')}
-                  </p>
-                )}
+        {tasks.map((task) =>
+          editingTaskId === task.id ? (
+            <li key={task.id} className="rounded-lg border bg-white p-4">
+              <form onSubmit={(e) => updateTask(e, task.id)} className="space-y-3">
+                <input
+                  name="title"
+                  defaultValue={task.title}
+                  required
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                />
+                <textarea
+                  name="description"
+                  defaultValue={task.description ?? ''}
+                  placeholder="Description (optional)"
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  rows={2}
+                />
+                <input name="due_date" type="date" defaultValue={task.due_date ?? ''} className="rounded-md border px-3 py-2 text-sm" />
+                <div className="flex gap-2">
+                  <button type="submit" className="rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-900">
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTaskId(null)}
+                    className="rounded-md border px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </li>
+          ) : (
+            <li key={task.id} className="rounded-lg border bg-white p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium text-gray-900">{task.title}</p>
+                  {task.description && <p className="mt-1 text-sm text-gray-500">{task.description}</p>}
+                  {task.due_date && <p className="mt-2 text-xs text-gray-400">Due {task.due_date}</p>}
+                  {task.documents?.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      📎 {task.documents.map((d) => d.title).join(', ')}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <button
+                    onClick={() => setEditingTaskId(task.id)}
+                    className="text-xs font-medium text-brand-900 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <select
+                    value={task.assigned_to ?? ''}
+                    onChange={(e) => updateAssignee(task.id, e.target.value)}
+                    className="rounded-md border px-2 py-1 text-xs"
+                  >
+                    <option value="">Unassigned</option>
+                    {profiles.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.full_name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={task.status}
+                    onChange={(e) => updateStatus(task.id, e.target.value)}
+                    className="rounded-md border px-2 py-1 text-xs"
+                  >
+                    {STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s.replace('_', ' ')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <select
-                  value={task.assigned_to ?? ''}
-                  onChange={(e) => updateAssignee(task.id, e.target.value)}
-                  className="rounded-md border px-2 py-1 text-xs"
-                >
-                  <option value="">Unassigned</option>
-                  {profiles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={task.status}
-                  onChange={(e) => updateStatus(task.id, e.target.value)}
-                  className="rounded-md border px-2 py-1 text-xs"
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s.replace('_', ' ')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          )
+        )}
         {tasks.length === 0 && <p className="text-sm text-gray-500">No tasks yet. Create the first one.</p>}
       </ul>
     </div>
