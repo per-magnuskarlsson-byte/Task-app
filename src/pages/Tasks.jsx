@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { formatDateTime } from '../lib/formatDate'
 
 const STATUSES = ['open', 'in_progress', 'done']
 
@@ -111,6 +112,9 @@ export default function Tasks() {
                 <p className="mt-1 text-xs text-gray-400">
                   {task.due_date && <>Due {task.due_date} · </>}
                   📎 {task.documents?.length ?? 0} document{task.documents?.length === 1 ? '' : 's'}
+                </p>
+                <p className="mt-1 text-xs text-gray-400">
+                  Created {formatDateTime(task.created_at)} · Updated {formatDateTime(task.updated_at)}
                 </p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5">

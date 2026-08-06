@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { formatDateTime } from '../lib/formatDate'
 
 const STATUSES = ['open', 'in_progress', 'done']
 const CATEGORIES = [
@@ -226,6 +227,10 @@ export default function TaskDetail() {
             {task.due_date && <p className="mt-2 text-xs text-gray-400">Due {task.due_date}</p>}
           </>
         )}
+
+        <p className="mt-2 text-xs text-gray-400">
+          Created {formatDateTime(task.created_at)} · Last updated {formatDateTime(task.updated_at)}
+        </p>
 
         <div className="mt-4 flex flex-wrap gap-3 border-t pt-4">
           <label className="flex items-center gap-2 text-xs text-gray-500">
