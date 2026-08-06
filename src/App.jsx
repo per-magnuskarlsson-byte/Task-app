@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Tasks from './pages/Tasks'
+import TaskDetail from './pages/TaskDetail'
 import Documents from './pages/Documents'
 
 function Private({ children }) {
@@ -26,6 +27,7 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/tasks" replace />} />
         <Route path="tasks" element={<Tasks />} />
+        <Route path="tasks/:id" element={<TaskDetail />} />
         <Route path="documents" element={<Documents />} />
       </Route>
     </Routes>
