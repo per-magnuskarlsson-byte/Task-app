@@ -79,6 +79,8 @@ as $$
   );
 $$;
 
+drop policy if exists "profiles are viewable by authenticated users" on profiles;
+drop policy if exists "users can update their own profile" on profiles;
 create policy "profiles are viewable by authenticated users"
   on profiles for select using (auth.role() = 'authenticated');
 create policy "users can update their own profile"
@@ -106,6 +108,10 @@ create trigger prevent_role_self_escalation
   before update on profiles
   for each row execute procedure prevent_role_self_escalation();
 
+drop policy if exists "tasks are viewable by their assignee or a superuser" on tasks;
+drop policy if exists "only superusers can create tasks" on tasks;
+drop policy if exists "assignee or superuser can update a task" on tasks;
+drop policy if exists "only superusers can delete tasks" on tasks;
 create policy "tasks are viewable by their assignee or a superuser"
   on tasks for select
   using (is_admin() or assigned_to = auth.uid());
@@ -149,6 +155,10 @@ create trigger enforce_task_update
   before update on tasks
   for each row execute procedure enforce_task_update_permissions();
 
+drop policy if exists "documents are viewable by their task's assignee or a superuser" on documents;
+drop policy if exists "assignee or superuser can upload a document to their task" on documents;
+drop policy if exists "assignee or superuser can delete a document on their task" on documents;
+drop policy if exists "only superusers can edit or relink a document" on documents;
 create policy "documents are viewable by their task's assignee or a superuser"
   on documents for select
   using (
@@ -178,6 +188,9 @@ create policy "only superusers can edit or relink a document"
 insert into storage.buckets (id, name, public)
 values ('documents', 'documents', false)
 on conflict (id) do nothing;
+
+drop policy if exists "authenticated users can read documents bucket" on storage.objects;
+drop policy if exists "authenticated users can upload to documents bucket" on storage.objects;
 
 create policy "authenticated users can read documents bucket"
   on storage.objects for select

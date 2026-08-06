@@ -32,10 +32,16 @@ as $$
 $$;
 
 -- ── Tasks ────────────────────────────────────────────────────────
+-- Drop both the old (pre-migration) and new policy names so this script
+-- is safe to run more than once.
 drop policy if exists "tasks are viewable by authenticated users" on tasks;
 drop policy if exists "authenticated users can create tasks" on tasks;
 drop policy if exists "authenticated users can update tasks" on tasks;
 drop policy if exists "authenticated users can delete tasks" on tasks;
+drop policy if exists "tasks are viewable by their assignee or a superuser" on tasks;
+drop policy if exists "only superusers can create tasks" on tasks;
+drop policy if exists "assignee or superuser can update a task" on tasks;
+drop policy if exists "only superusers can delete tasks" on tasks;
 
 create policy "tasks are viewable by their assignee or a superuser"
   on tasks for select
@@ -85,10 +91,15 @@ create trigger enforce_task_update
   for each row execute procedure enforce_task_update_permissions();
 
 -- ── Documents ────────────────────────────────────────────────────
+-- Same idea: drop both the old and new policy names first.
 drop policy if exists "documents are viewable by authenticated users" on documents;
 drop policy if exists "authenticated users can add documents" on documents;
 drop policy if exists "authenticated users can update documents" on documents;
 drop policy if exists "authenticated users can delete documents" on documents;
+drop policy if exists "documents are viewable by their task's assignee or a superuser" on documents;
+drop policy if exists "assignee or superuser can upload a document to their task" on documents;
+drop policy if exists "assignee or superuser can delete a document on their task" on documents;
+drop policy if exists "only superusers can edit or relink a document" on documents;
 
 create policy "documents are viewable by their task's assignee or a superuser"
   on documents for select
