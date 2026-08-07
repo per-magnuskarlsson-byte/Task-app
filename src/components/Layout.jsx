@@ -14,7 +14,10 @@ export default function Layout() {
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-1">
-            <span className="mr-4 font-semibold text-gray-900">Team Tasks</span>
+            <div className="mr-4 flex flex-col items-center leading-none">
+              <img src="/logo.png" alt="KungsAir" className="h-7 w-auto" />
+              <span className="mt-0.5 text-[10px] font-semibold tracking-wide text-gray-900">KungsAir</span>
+            </div>
             <NavLink to="/tasks" className={linkClass}>
               Tasks
             </NavLink>

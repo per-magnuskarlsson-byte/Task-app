@@ -7,10 +7,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.png', 'logo.png'],
       manifest: {
-        name: 'Team Tasks',
-        short_name: 'Tasks',
+        name: 'KungsAir Tasks',
+        short_name: 'KungsAir',
         description: 'Task and document manager for the team',
         theme_color: '#1D9E75',
         background_color: '#ffffff',

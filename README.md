@@ -1,4 +1,4 @@
-# Team Tasks
+# KungsAir Tasks
 
 A small task manager and document library for a team of ~2-10 people. Works as a
 regular website and installs to an iPhone home screen like an app (PWA) — the

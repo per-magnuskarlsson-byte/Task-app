@@ -33,12 +33,16 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+      <div className="mb-6 flex flex-col items-center">
+        <img src="/logo.png" alt="KungsAir" className="h-16 w-auto" />
+        <p className="mt-2 text-sm font-semibold tracking-wide text-gray-900">KungsAir</p>
+      </div>
       <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
         <h1 className="mb-1 text-lg font-semibold text-gray-900">
           {mode === 'sign-in' ? 'Sign in' : 'Create your account'}
         </h1>
-        <p className="mb-5 text-sm text-gray-500">Team Tasks</p>
+        <p className="mb-5 text-sm text-gray-500">Task management</p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === 'sign-up' && (
