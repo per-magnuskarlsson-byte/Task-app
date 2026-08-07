@@ -21,9 +21,6 @@ export default function Layout() {
             <NavLink to="/tasks" className={linkClass}>
               Tasks
             </NavLink>
-            <NavLink to="/documents" className={linkClass}>
-              Documents
-            </NavLink>
           </div>
           <div className="flex items-center gap-3 text-sm text-gray-600">
             <span>{profile?.full_name ?? 'Loading…'}</span>

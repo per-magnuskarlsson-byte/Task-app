@@ -10,10 +10,10 @@ same site works on your laptop too.
 - **Tasks** — superusers create tasks, assign a teammate, edit details, and
   delete; the assignee tracks status. Each person only sees tasks assigned
   to them; superusers see everything (`src/pages/Tasks.jsx`)
-- **Documents** — upload (multiple files at once) process definitions /
-  checklists to a task, open them via secure links, delete them. A document
-  is only visible to its task's assignee or a superuser
-  (`src/pages/Documents.jsx`)
+- **Documents** — uploaded per task, from that task's page: multiple files
+  at once, process definitions / checklists, opened via secure links,
+  deletable. A document is only visible to its task's assignee or a
+  superuser (`src/pages/TaskDetail.jsx`)
 - **Database schema + security rules** — `supabase/schema.sql`
 
 ## Roles
